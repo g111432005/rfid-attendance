@@ -1,0 +1,1519 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>智慧 RFID 簽到系統</title>
+  <style>
+    /* ── Reset & Base ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', 'PingFang TC', 'Microsoft JhengHei', sans-serif;
+      background: #f0f4f8;
+      color: #2d3748;
+      min-height: 100vh;
+    }
+
+    /* ── Header ── */
+    header {
+      background: #ffffff;
+      border-bottom: 1px solid #e2e8f0;
+      padding: 20px 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+    }
+    .header-title {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .header-icon {
+      width: 44px; height: 44px;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px;
+    }
+    header h1 { font-size: 1.4rem; font-weight: 700; color: #1a202c; }
+    header p  { font-size: 0.8rem; color: #718096; margin-top: 2px; }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .live-badge {
+      display: flex; align-items: center; gap: 8px;
+      background: #f0fff4;
+      border: 1px solid #c6f6d5;
+      border-radius: 20px;
+      padding: 6px 14px;
+      font-size: 0.78rem; color: #276749;
+    }
+    .live-dot {
+      width: 8px; height: 8px;
+      background: #48bb78;
+      border-radius: 50%;
+      animation: pulse 1.5s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50%       { opacity: 0.4; transform: scale(0.8); }
+    }
+
+    /* ── Header Buttons ── */
+    .btn-header {
+      display: flex; align-items: center; gap: 6px;
+      padding: 8px 16px;
+      border-radius: 10px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      border: 1.5px solid;
+      transition: background 0.18s, color 0.18s, transform 0.15s;
+    }
+    .btn-header:hover { transform: translateY(-1px); }
+    .btn-face {
+      background: #ebf8ff;
+      border-color: #90cdf4;
+      color: #2b6cb0;
+    }
+    .btn-face:hover { background: #2b6cb0; color: #fff; }
+    .btn-admin {
+      background: #faf5ff;
+      border-color: #d6bcfa;
+      color: #553c9a;
+    }
+    .btn-admin:hover { background: #553c9a; color: #fff; }
+
+    /* ── Main Layout ── */
+    main { max-width: 1100px; margin: 0 auto; padding: 32px 24px; }
+
+    /* ── 上方橫排（統計 + LCD）── */
+    .top-row {
+      display: flex;
+      gap: 20px;
+      align-items: flex-start;
+      margin-bottom: 28px;
+    }
+
+    /* ── Stats Cards ── */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 18px;
+      flex: 1;
+    }
+    .stat-card {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 16px;
+      padding: 24px;
+      position: relative;
+      overflow: hidden;
+      transition: transform 0.2s, box-shadow 0.2s;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+    }
+    .stat-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+    .stat-card::before {
+      content: '';
+      position: absolute; top: 0; left: 0; right: 0; height: 3px;
+      border-radius: 16px 16px 0 0;
+    }
+    .stat-card.green::before  { background: linear-gradient(90deg, #48bb78, #68d391); }
+    .stat-card.blue::before   { background: linear-gradient(90deg, #667eea, #764ba2); }
+    .stat-card.orange::before { background: linear-gradient(90deg, #ed8936, #f6ad55); }
+
+    .stat-label  { font-size: 0.78rem; color: #718096; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 10px; }
+    .stat-value  { font-size: 2.4rem; font-weight: 800; line-height: 1; }
+    .stat-card.green  .stat-value { color: #276749; }
+    .stat-card.blue   .stat-value { color: #553c9a; }
+    .stat-card.orange .stat-value { color: #c05621; }
+    .stat-icon {
+      position: absolute; right: 20px; top: 50%; transform: translateY(-50%);
+      font-size: 2.2rem; opacity: 0.45;
+    }
+
+    /* ── Table Section ── */
+    .table-section {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+    }
+    .table-header {
+      padding: 18px 24px;
+      border-bottom: 1px solid #e2e8f0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .table-header h2 { font-size: 1rem; font-weight: 600; color: #1a202c; }
+    .table-header small { font-size: 0.75rem; color: #a0aec0; }
+
+    .btn-clear {
+      background: transparent;
+      border: 1px solid #fc8181;
+      color: #e53e3e;
+      border-radius: 8px;
+      padding: 6px 14px;
+      font-size: 0.78rem;
+      cursor: pointer;
+      transition: background 0.2s, color 0.2s;
+    }
+    .btn-clear:hover { background: #e53e3e; color: #fff; }
+
+    table { width: 100%; border-collapse: collapse; }
+    thead th {
+      padding: 12px 20px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #a0aec0;
+      text-align: left;
+      background: #f7fafc;
+      border-bottom: 1px solid #e2e8f0;
+    }
+    tbody tr {
+      border-bottom: 1px solid #edf2f7;
+      transition: background 0.15s;
+    }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: #f7fafc; }
+    tbody td {
+      padding: 14px 20px;
+      font-size: 0.88rem;
+      color: #4a5568;
+    }
+    .td-time    { font-family: monospace; color: #553c9a; font-size: 0.85rem; }
+    .td-name    { font-weight: 600; color: #1a202c; }
+    .td-id      { color: #a0aec0; font-size: 0.82rem; }
+
+    .badge {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+    .badge-ok       { background: #f0fff4; color: #276749; border: 1px solid #c6f6d5; }
+    .badge-checkout { background: #ebf8ff; color: #2b6cb0; border: 1px solid #bee3f8; }
+    .badge-deny     { background: #fff5f5; color: #c53030; border: 1px solid #fed7d7; }
+    .badge-face     { background: #faf5ff; color: #553c9a; border: 1px solid #d6bcfa; }
+
+    /* ── LCD 顯示器 ── */
+    .lcd-section {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 16px;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+      flex-shrink: 0;
+    }
+    .lcd-label {
+      font-size: 0.78rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #a0aec0;
+      align-self: flex-start;
+    }
+    .lcd-bezel {
+      background: #c8c8b0;
+      border-radius: 8px;
+      padding: 12px 16px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.3);
+    }
+    .lcd-screen {
+      background: #8bac0f;
+      border-radius: 4px;
+      padding: 14px 20px;
+      box-shadow: inset 0 2px 6px rgba(0,0,0,0.25);
+      min-width: 320px;
+    }
+    .lcd-line {
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: #0f380f;
+      letter-spacing: 0.12em;
+      white-space: pre;
+      line-height: 1.9;
+      text-shadow: 0 1px 0 rgba(255,255,255,0.15);
+    }
+
+    /* ── Empty State ── */
+    .empty-state {
+      padding: 60px 20px;
+      text-align: center;
+      color: #a0aec0;
+    }
+    .empty-state .icon { font-size: 3rem; margin-bottom: 12px; }
+    .empty-state p { font-size: 0.9rem; }
+
+    /* ══════════════════════════════════════════
+       MODAL 共用樣式
+    ══════════════════════════════════════════ */
+    .modal-overlay {
+      display: none;
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.45);
+      backdrop-filter: blur(3px);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-overlay.active { display: flex; }
+
+    .modal-box {
+      background: #fff;
+      border-radius: 20px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+      width: 100%;
+      max-height: 90vh;
+      overflow-y: auto;
+      position: relative;
+      animation: modalIn 0.22s ease;
+    }
+    @keyframes modalIn {
+      from { opacity: 0; transform: translateY(16px) scale(0.97); }
+      to   { opacity: 1; transform: translateY(0)   scale(1); }
+    }
+
+    .modal-header {
+      padding: 20px 24px 16px;
+      border-bottom: 1px solid #e2e8f0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .modal-header h2 { font-size: 1.1rem; font-weight: 700; color: #1a202c; }
+    .modal-close {
+      background: none; border: none; cursor: pointer;
+      font-size: 1.4rem; color: #a0aec0;
+      line-height: 1; padding: 4px;
+      transition: color 0.15s;
+    }
+    .modal-close:hover { color: #e53e3e; }
+    .modal-body { padding: 24px; }
+
+    /* ── 通用按鈕 ── */
+    .btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 9px 18px;
+      border-radius: 9px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: opacity 0.2s, transform 0.15s;
+    }
+    .btn:hover { opacity: 0.88; transform: translateY(-1px); }
+    .btn:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
+    .btn-primary  { background: linear-gradient(135deg, #667eea, #764ba2); color: #fff; }
+    .btn-success  { background: #48bb78; color: #fff; }
+    .btn-danger   { background: #e53e3e; color: #fff; }
+    .btn-ghost    { background: #f7fafc; color: #4a5568; border: 1px solid #e2e8f0; }
+
+    /* ── 表單元素 ── */
+    .form-group { margin-bottom: 16px; }
+    .form-group label {
+      display: block;
+      font-size: 0.8rem; font-weight: 600;
+      color: #4a5568; margin-bottom: 6px;
+    }
+    .form-group input {
+      width: 100%;
+      padding: 9px 12px;
+      border: 1.5px solid #e2e8f0;
+      border-radius: 9px;
+      font-size: 0.88rem;
+      color: #1a202c;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .form-group input:focus { border-color: #667eea; }
+
+    /* ══════════════════════════════════════════
+       臉部辨識 Modal
+    ══════════════════════════════════════════ */
+    #face-modal .modal-box { max-width: 520px; }
+
+    .camera-wrap {
+      position: relative;
+      background: #1a202c;
+      border-radius: 12px;
+      overflow: hidden;
+      aspect-ratio: 4/3;
+      margin-bottom: 16px;
+    }
+    #face-video {
+      width: 100%; height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+    #face-canvas {
+      position: absolute; inset: 0;
+      width: 100%; height: 100%;
+    }
+
+    .face-status {
+      background: #f7fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      padding: 12px 16px;
+      font-size: 0.85rem;
+      color: #4a5568;
+      margin-bottom: 16px;
+      min-height: 44px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .face-status.success { background: #f0fff4; border-color: #c6f6d5; color: #276749; }
+    .face-status.error   { background: #fff5f5; border-color: #fed7d7; color: #c53030; }
+    .face-status.loading { background: #ebf8ff; border-color: #bee3f8; color: #2b6cb0; }
+
+    .face-actions {
+      display: flex; gap: 10px;
+    }
+
+    /* ══════════════════════════════════════════
+       管理者 Modal
+    ══════════════════════════════════════════ */
+    #admin-modal .modal-box { max-width: 680px; }
+
+    /* 密碼閘門 */
+    #admin-gate { text-align: center; }
+    #admin-gate .gate-icon { font-size: 3rem; margin-bottom: 12px; }
+    #admin-gate h3 { font-size: 1rem; font-weight: 700; color: #1a202c; margin-bottom: 4px; }
+    #admin-gate p  { font-size: 0.82rem; color: #718096; margin-bottom: 20px; }
+    #admin-gate-form { display: flex; flex-direction: column; gap: 12px; align-items: center; }
+    #admin-pw-input {
+      width: 260px;
+      padding: 10px 14px;
+      border: 1.5px solid #e2e8f0;
+      border-radius: 10px;
+      font-size: 0.9rem;
+      text-align: center;
+      letter-spacing: 0.15em;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    #admin-pw-input:focus { border-color: #667eea; }
+    #admin-pw-error {
+      color: #e53e3e; font-size: 0.8rem; min-height: 18px;
+    }
+
+    /* 管理者面板主體 */
+    #admin-panel { display: none; }
+    .admin-section { margin-bottom: 28px; }
+    .admin-section-title {
+      font-size: 0.78rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.1em;
+      color: #718096; margin-bottom: 14px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid #e2e8f0;
+    }
+
+    /* 學生清單 */
+    .student-list { display: flex; flex-direction: column; gap: 10px; }
+    .student-row {
+      display: flex; align-items: center; gap: 12px;
+      padding: 12px 14px;
+      background: #f7fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+    }
+    .student-avatar {
+      width: 38px; height: 38px;
+      border-radius: 50%;
+      object-fit: cover;
+      background: #e2e8f0;
+      flex-shrink: 0;
+    }
+    .student-avatar.placeholder {
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.1rem; color: #a0aec0;
+    }
+    .student-info { flex: 1; min-width: 0; }
+    .student-info .s-name {
+      font-weight: 600; font-size: 0.9rem; color: #1a202c;
+    }
+    .student-info .s-meta {
+      font-size: 0.75rem; color: #a0aec0; margin-top: 2px;
+      font-family: monospace;
+    }
+    .student-actions { display: flex; gap: 6px; flex-shrink: 0; }
+    .btn-sm {
+      padding: 5px 10px;
+      font-size: 0.75rem;
+      border-radius: 7px;
+    }
+
+    /* 新增學生表單 */
+    .add-student-form {
+      background: #f7fafc;
+      border: 1px dashed #cbd5e0;
+      border-radius: 12px;
+      padding: 18px;
+    }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .face-enroll-wrap {
+      margin-top: 12px;
+      display: flex; align-items: center; gap: 12px;
+    }
+    #enroll-preview {
+      width: 60px; height: 60px;
+      border-radius: 10px;
+      object-fit: cover;
+      border: 1.5px solid #e2e8f0;
+      background: #e2e8f0;
+      display: none;
+    }
+    #enroll-camera-wrap {
+      position: relative;
+      width: 200px; height: 150px;
+      background: #1a202c;
+      border-radius: 10px;
+      overflow: hidden;
+      display: none;
+    }
+    #enroll-video {
+      width: 100%; height: 100%;
+      object-fit: cover;
+    }
+    #enroll-canvas { display: none; }
+
+    /* 管理者登出列 */
+    .admin-topbar {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 20px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid #e2e8f0;
+    }
+    .admin-topbar span { font-size: 0.82rem; color: #718096; }
+    .admin-topbar strong { color: #553c9a; }
+
+    /* ── Responsive ── */
+    @media (max-width: 900px) {
+      .top-row { flex-direction: column; }
+      .stats-grid { grid-template-columns: 1fr 1fr; }
+      .form-row { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 640px) {
+      .stats-grid { grid-template-columns: 1fr; }
+      header { flex-direction: column; gap: 12px; align-items: flex-start; }
+      .header-right { flex-wrap: wrap; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ════════════════════════════════════
+     Header
+════════════════════════════════════ -->
+<header>
+  <div class="header-title">
+    <div class="header-icon">🪪</div>
+    <div>
+      <h1>智慧 RFID 簽到系統</h1>
+      <p id="current-time">載入中...</p>
+    </div>
+  </div>
+  <div class="header-right">
+    <button class="btn-header btn-face" onclick="openFaceModal()">📷 臉部辨識</button>
+    <button class="btn-header btn-admin" onclick="openAdminModal()">🔐 管理者</button>
+    <div class="live-badge">
+      <div class="live-dot"></div>
+      即時更新中
+    </div>
+  </div>
+</header>
+
+<!-- ════════════════════════════════════
+     Main
+════════════════════════════════════ -->
+<main>
+
+  <!-- 統計卡片 + LCD 並排 -->
+  <div class="top-row">
+
+    <!-- 左：統計卡片 -->
+    <div class="stats-grid">
+      <div class="stat-card green">
+        <div class="stat-label">今日簽到人次</div>
+        <div class="stat-value" id="today-count">—</div>
+        <div class="stat-icon">✅</div>
+      </div>
+      <div class="stat-card blue">
+        <div class="stat-label">累計簽到人次</div>
+        <div class="stat-value" id="total-count">—</div>
+        <div class="stat-icon">📋</div>
+      </div>
+      <div class="stat-card orange">
+        <div class="stat-label">未授權嘗試</div>
+        <div class="stat-value" id="unauth-count">—</div>
+        <div class="stat-icon">⚠️</div>
+      </div>
+    </div>
+
+    <!-- 右：LCD 顯示器 -->
+    <div class="lcd-section">
+      <div class="lcd-label">LCD 即時顯示</div>
+      <div class="lcd-bezel">
+        <div class="lcd-screen">
+          <div class="lcd-line" id="lcd-line1">RFID Attendance </div>
+          <div class="lcd-line" id="lcd-line2">Scan your card  </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- 紀錄表格 -->
+  <div class="table-section">
+    <div class="table-header">
+      <div>
+        <h2>簽到紀錄</h2>
+        <small id="last-updated">—</small>
+      </div>
+      <button class="btn-clear" onclick="clearRecords()">🗑 清除紀錄</button>
+    </div>
+    <div id="table-container">
+      <div class="empty-state">
+        <div class="icon">📡</div>
+        <p>等待刷卡...</p>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<!-- ════════════════════════════════════
+     臉部辨識 Modal
+════════════════════════════════════ -->
+<div class="modal-overlay" id="face-modal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h2>📷 臉部辨識簽到</h2>
+      <button class="modal-close" onclick="closeFaceModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="camera-wrap">
+        <video id="face-video" autoplay playsinline muted></video>
+        <canvas id="face-canvas"></canvas>
+      </div>
+      <div class="face-status" id="face-status">
+        <span>🔄</span> 模型載入中，請稍候...
+      </div>
+      <div class="face-actions">
+        <button class="btn btn-primary" id="btn-detect" onclick="detectFace()" disabled>
+          🔍 開始辨識
+        </button>
+        <button class="btn btn-ghost" onclick="closeFaceModal()">取消</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════
+     管理者 Modal
+════════════════════════════════════ -->
+<div class="modal-overlay" id="admin-modal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h2>🔐 管理者面板</h2>
+      <button class="modal-close" onclick="closeAdminModal()">✕</button>
+    </div>
+    <div class="modal-body">
+
+      <!-- 密碼閘門 -->
+      <div id="admin-gate">
+        <div class="gate-icon">🔑</div>
+        <h3>管理者驗證</h3>
+        <p>請輸入管理者密碼以繼續</p>
+        <div id="admin-gate-form">
+          <input type="password" id="admin-pw-input"
+                 placeholder="輸入密碼"
+                 onkeydown="if(event.key==='Enter') adminLogin()">
+          <div id="admin-pw-error"></div>
+          <button class="btn btn-primary" onclick="adminLogin()">🔓 登入</button>
+        </div>
+      </div>
+
+      <!-- 管理者主面板（登入後顯示） -->
+      <div id="admin-panel">
+        <div class="admin-topbar">
+          <span>已登入為 <strong>管理者</strong></span>
+          <button class="btn btn-ghost btn-sm" onclick="adminLogout()">登出</button>
+        </div>
+
+        <!-- 現有學生清單 -->
+        <div class="admin-section">
+          <div class="admin-section-title">已授權學生</div>
+          <div class="student-list" id="student-list">
+            <div style="color:#a0aec0;font-size:0.85rem;text-align:center;padding:20px">載入中...</div>
+          </div>
+        </div>
+
+        <!-- 新增學生 -->
+        <div class="admin-section">
+          <div class="admin-section-title">新增學生</div>
+          <div class="add-student-form">
+            <div class="form-row">
+              <div class="form-group">
+                <label>卡片 UID（十六進位）</label>
+                <input type="text" id="new-uid" placeholder="例：A1B2C3D4" style="text-transform:uppercase">
+              </div>
+              <div class="form-group">
+                <label>學號</label>
+                <input type="text" id="new-sid" placeholder="例：111432005">
+              </div>
+            </div>
+            <div class="form-group">
+              <label>姓名</label>
+              <input type="text" id="new-name" placeholder="例：李承曄">
+            </div>
+
+            <!-- 人臉登記（選填）-->
+            <div style="font-size:0.8rem;font-weight:600;color:#4a5568;margin-bottom:8px">
+              人臉照片（選填，供臉部辨識備用）
+            </div>
+            <div class="face-enroll-wrap">
+              <img id="enroll-preview" alt="預覽">
+              <div id="enroll-camera-wrap">
+                <video id="enroll-video" autoplay playsinline muted></video>
+              </div>
+              <canvas id="enroll-canvas"></canvas>
+              <div style="display:flex;flex-direction:column;gap:6px">
+                <button class="btn btn-ghost btn-sm" onclick="startEnrollCamera()">📷 開啟相機拍照</button>
+                <button class="btn btn-success btn-sm" id="btn-snap" onclick="snapEnroll()" style="display:none">📸 拍照</button>
+                <button class="btn btn-ghost btn-sm" onclick="clearEnroll()" id="btn-clear-enroll" style="display:none">🗑 清除照片</button>
+              </div>
+            </div>
+
+            <div style="margin-top:14px;display:flex;gap:10px;align-items:center">
+              <button class="btn btn-primary" onclick="addStudent()">➕ 新增學生</button>
+              <span id="add-result" style="font-size:0.82rem;color:#276749"></span>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /admin-panel -->
+    </div><!-- /modal-body -->
+  </div><!-- /modal-box -->
+</div>
+
+<!-- face-api.js CDN（備用，若模型載入失敗先用 CDN 版本） -->
+<script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+
+<script>
+/* ══════════════════════════════════════════════════
+   工具函式
+══════════════════════════════════════════════════ */
+function setStatus(el, msg, cls = '') {
+  el.className = 'face-status' + (cls ? ' ' + cls : '');
+  el.innerHTML = msg;
+}
+
+/* ══════════════════════════════════════════════════
+   時鐘
+══════════════════════════════════════════════════ */
+function updateClock() {
+  const now = new Date();
+  const s = now.toLocaleString('zh-TW', {
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', second: '2-digit',
+    hour12: false
+  });
+  document.getElementById('current-time').textContent = s;
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+/* ══════════════════════════════════════════════════
+   主儀表板資料拉取
+══════════════════════════════════════════════════ */
+async function fetchData() {
+  try {
+    const res  = await fetch('/api/records');
+    const data = await res.json();
+
+    document.getElementById('today-count').textContent  = data.today_count;
+    document.getElementById('total-count').textContent  = data.total_count;
+    document.getElementById('unauth-count').textContent = data.unauthorized_count;
+
+    const now = new Date();
+    document.getElementById('last-updated').textContent =
+      `最後更新：${now.toLocaleTimeString('zh-TW')}`;
+
+    const records   = data.records;
+    const container = document.getElementById('table-container');
+
+    if (!records || records.length === 0) {
+      container.innerHTML = `
+        <div class="empty-state">
+          <div class="icon">📡</div>
+          <p>尚無紀錄，請靠近感應卡片</p>
+        </div>`;
+      return;
+    }
+
+    let rows = '';
+    for (const r of records) {
+      const badge =
+        r.status === 'check_in'  ? `<span class="badge badge-ok">↑ 簽到</span>` :
+        r.status === 'check_out' ? `<span class="badge badge-checkout">↓ 簽退 ${r.duration || ''}</span>` :
+        r.status === 'face_in'   ? `<span class="badge badge-face">📷 臉部簽到</span>` :
+        r.status === 'face_out'  ? `<span class="badge badge-face">📷 臉部簽退 ${r.duration || ''}</span>` :
+                                   `<span class="badge badge-deny">✗ 拒絕</span>`;
+      rows += `
+        <tr>
+          <td class="td-time">${r.date} ${r.time}</td>
+          <td class="td-name">${r.name}</td>
+          <td class="td-id">${r.student_id}</td>
+          <td>${badge}</td>
+          <td class="td-id" style="font-family:monospace">${r.uid || '—'}</td>
+        </tr>`;
+    }
+
+    container.innerHTML = `
+      <table>
+        <thead>
+          <tr>
+            <th>時間</th>
+            <th>姓名</th>
+            <th>學號</th>
+            <th>狀態</th>
+            <th>卡片 UID</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>`;
+
+  } catch (e) {
+    console.warn('資料拉取失敗：', e);
+  }
+}
+
+async function clearRecords() {
+  if (!confirm('確定要清除所有簽到紀錄嗎？')) return;
+  await fetch('/api/clear', { method: 'POST' });
+  fetchData();
+}
+
+async function fetchLcd() {
+  try {
+    const res  = await fetch('/api/lcd');
+    const data = await res.json();
+    document.getElementById('lcd-line1').textContent = data.line1 || '                ';
+    document.getElementById('lcd-line2').textContent = data.line2 || '                ';
+  } catch (e) {
+    console.warn('LCD 資料拉取失敗：', e);
+  }
+}
+
+fetchData();
+fetchLcd();
+setInterval(fetchData, 2000);
+setInterval(fetchLcd, 2000);
+
+/* ══════════════════════════════════════════════════
+   臉部辨識 Modal
+══════════════════════════════════════════════════ */
+let faceStream        = null;
+let faceModelsReady   = false;
+let faceModelsError   = false;   // 模型載入是否失敗
+let faceMatcher       = null;    // FaceMatcher（載入已登記人臉後建立）
+let _faceModalOpening = false;   // 防止重複開啟
+
+const MODEL_PATH = '/static/models';
+
+/* ── 相機開啟工具（降低解析度 + 自動 retry，解決 Pi Camera 超時問題）── */
+async function openCamera(constraints, retries = 3, delayMs = 1200) {
+  // 優先嘗試低解析度，Pi Camera 啟動較快
+  const safeConstraints = {
+    video: {
+      facingMode: constraints.video?.facingMode || 'user',
+      width:  { ideal: 640 },
+      height: { ideal: 480 },
+    }
+  };
+  for (let i = 0; i < retries; i++) {
+    try {
+      return await navigator.mediaDevices.getUserMedia(safeConstraints);
+    } catch (e) {
+      const isTimeout = e.name === 'NotReadableError' || e.message.includes('Timeout') ||
+                        e.message.includes('timeout') || e.name === 'AbortError';
+      if (isTimeout && i < retries - 1) {
+        console.warn(`相機開啟失敗，${delayMs}ms 後重試（${i + 1}/${retries - 1}）：`, e.message);
+        await new Promise(r => setTimeout(r, delayMs));
+      } else {
+        throw e;
+      }
+    }
+  }
+}
+
+async function loadFaceModels() {
+  try {
+    await Promise.all([
+      faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_PATH),
+      faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_PATH),
+      faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_PATH),
+    ]);
+    faceModelsReady = true;
+    console.log('face-api.js 模型載入完成');
+  } catch (e) {
+    faceModelsError = true;   // 標記失敗，防止 openFaceModal 無限等待
+    console.error('模型載入失敗：', e);
+  }
+}
+
+// 預先載入模型
+loadFaceModels();
+
+/* 從 /api/students 讀取有人臉的學生，建立 FaceMatcher */
+async function buildFaceMatcher() {
+  const res  = await fetch('/api/students');
+  const data = await res.json();
+  const students = data.students || {};
+
+  const labeled = [];
+  for (const [uid, info] of Object.entries(students)) {
+    if (!info.has_face) continue;
+    try {
+      const img = await faceapi.fetchImage(`/static/faces/${uid}.jpg?t=${Date.now()}`);
+      const det = await faceapi
+        .detectSingleFace(img)
+        .withFaceLandmarks()
+        .withFaceDescriptor();
+      if (det) {
+        labeled.push(new faceapi.LabeledFaceDescriptors(uid, [det.descriptor]));
+        console.log('已載入人臉：', uid, info.name);
+      }
+    } catch (e) {
+      console.warn('無法載入人臉照片：', uid, e);
+    }
+  }
+  if (labeled.length === 0) return null;
+  return new faceapi.FaceMatcher(labeled, 0.55);  // 距離門檻 0.55
+}
+
+async function openFaceModal() {
+  // ── 防止重複開啟 ──
+  if (_faceModalOpening) return;
+  _faceModalOpening = true;
+
+  document.getElementById('face-modal').classList.add('active');
+  const statusEl = document.getElementById('face-status');
+  const btn      = document.getElementById('btn-detect');
+  btn.disabled = true;
+
+  // ── 啟動相機（含 retry）──
+  setStatus(statusEl, '🔄 相機啟動中...', 'loading');
+  let stream;
+  try {
+    stream = await openCamera({ video: { facingMode: 'user' } });
+  } catch (e) {
+    setStatus(statusEl, '❌ 無法存取相機：' + e.message, 'error');
+    _faceModalOpening = false;
+    return;
+  }
+
+  // ── 確認 Modal 還在（retry 期間使用者可能已關閉）──
+  if (!document.getElementById('face-modal').classList.contains('active')) {
+    stream.getTracks().forEach(t => t.stop());
+    _faceModalOpening = false;
+    return;
+  }
+  faceStream = stream;
+  document.getElementById('face-video').srcObject = faceStream;
+
+  // ── 等待模型就緒（最多 30 秒，避免無限阻塞）──
+  if (!faceModelsReady) {
+    setStatus(statusEl, '🔄 模型載入中，請稍候...', 'loading');
+    const result = await Promise.race([
+      new Promise(resolve => {
+        const t = setInterval(() => {
+          if (faceModelsReady || faceModelsError) { clearInterval(t); resolve(faceModelsError ? 'error' : 'ok'); }
+        }, 300);
+      }),
+      new Promise(resolve => setTimeout(() => resolve('timeout'), 30000)),
+    ]);
+    if (result !== 'ok') {
+      setStatus(statusEl, '❌ 模型載入失敗，請重新整理頁面後再試', 'error');
+      _faceModalOpening = false;
+      return;
+    }
+  }
+
+  // ── 再次確認 Modal 還在 ──
+  if (!document.getElementById('face-modal').classList.contains('active')) {
+    _faceModalOpening = false;
+    return;
+  }
+
+  // ── 建立 FaceMatcher ──
+  setStatus(statusEl, '🔄 載入已登記人臉中...', 'loading');
+  faceMatcher = await buildFaceMatcher();
+
+  _faceModalOpening = false;
+
+  if (!faceMatcher) {
+    setStatus(statusEl, '⚠️ 尚無已登記人臉，請先至管理者面板登記', 'error');
+  } else {
+    setStatus(statusEl, '✅ 就緒，請點擊「開始辨識」', 'success');
+    btn.disabled = false;
+  }
+}
+
+function closeFaceModal() {
+  _faceModalOpening = false;   // 解除開啟鎖
+  document.getElementById('face-modal').classList.remove('active');
+  if (faceStream) {
+    faceStream.getTracks().forEach(t => t.stop());
+    faceStream = null;
+  }
+  document.getElementById('btn-detect').disabled = true;
+  setStatus(document.getElementById('face-status'), '🔄 模型載入中，請稍候...');
+}
+
+async function detectFace() {
+  const statusEl = document.getElementById('face-status');
+  const video    = document.getElementById('face-video');
+  const canvas   = document.getElementById('face-canvas');
+  const btn      = document.getElementById('btn-detect');
+
+  btn.disabled = true;
+  setStatus(statusEl, '🔍 偵測人臉中...', 'loading');
+
+  // 比對尺寸
+  const displaySize = { width: video.videoWidth, height: video.videoHeight };
+  faceapi.matchDimensions(canvas, displaySize);
+
+  // 偵測人臉 + 特徵向量
+  const detection = await faceapi
+    .detectSingleFace(video, new faceapi.SsdMobilenetv1Options({ minConfidence: 0.5 }))
+    .withFaceLandmarks()
+    .withFaceDescriptor();
+
+  if (!detection) {
+    setStatus(statusEl, '⚠️ 未偵測到人臉，請調整位置後再試', 'error');
+    btn.disabled = false;
+    return;
+  }
+
+  // 畫框
+  const resized = faceapi.resizeResults(detection, displaySize);
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  faceapi.draw.drawDetections(canvas, resized);
+  faceapi.draw.drawFaceLandmarks(canvas, resized);
+
+  // 在瀏覽器端比對
+  const match = faceMatcher.findBestMatch(detection.descriptor);
+  if (match.label === 'unknown') {
+    setStatus(statusEl, `❌ 找不到符合的人臉（距離 ${match.distance.toFixed(2)}），請重新登記或調整角度`, 'error');
+    btn.disabled = false;
+    return;
+  }
+
+  const uid = match.label;
+  setStatus(statusEl, `📡 辨識成功（${uid}），傳送至伺服器...`, 'loading');
+
+  try {
+    const res  = await fetch('/api/face-checkin', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ uid }),
+    });
+    const data = await res.json();
+
+    if (data.status === 'ok') {
+      const isIn   = data.action === 'check_in';
+      const extra  = data.duration ? `（在場 ${data.duration}）` : '';
+      setStatus(statusEl,
+        `✅ ${isIn ? '簽到' : '簽退'}成功！${data.name} ${extra}`, 'success');
+      fetchData();
+      setTimeout(closeFaceModal, 2500);
+    } else {
+      setStatus(statusEl, `❌ ${data.message || '伺服器錯誤，請重試'}`, 'error');
+      btn.disabled = false;
+    }
+  } catch (e) {
+    setStatus(statusEl, '❌ 網路錯誤：' + e.message, 'error');
+    btn.disabled = false;
+  }
+}
+
+/* ══════════════════════════════════════════════════
+   管理者 Modal
+══════════════════════════════════════════════════ */
+let adminPassword = '';
+
+function openAdminModal() {
+  document.getElementById('admin-modal').classList.add('active');
+  if (!adminPassword) {
+    document.getElementById('admin-gate').style.display = '';
+    document.getElementById('admin-panel').style.display = 'none';
+    document.getElementById('admin-pw-input').value = '';
+    document.getElementById('admin-pw-error').textContent = '';
+  }
+}
+
+function closeAdminModal() {
+  document.getElementById('admin-modal').classList.remove('active');
+  stopEnrollCamera();
+  closeExEnroll();
+  closeEditPanel();
+}
+
+async function adminLogin() {
+  const pw = document.getElementById('admin-pw-input').value;
+  if (!pw) return;
+
+  // 驗證密碼（透過 GET 學生清單時帶密碼，若成功則視為通過）
+  try {
+    const res  = await fetch('/api/admin/students?password=' + encodeURIComponent(pw));
+    const data = await res.json();
+    if (res.status !== 200) throw new Error(data.error || '密碼錯誤');
+
+    adminPassword = pw;
+    document.getElementById('admin-pw-error').textContent = '';
+    document.getElementById('admin-gate').style.display  = 'none';
+    document.getElementById('admin-panel').style.display = 'block';
+    renderStudentList(data.students);
+  } catch (e) {
+    document.getElementById('admin-pw-error').textContent = '❌ ' + (e.message || '密碼錯誤');
+  }
+}
+
+function adminLogout() {
+  adminPassword = '';
+  document.getElementById('admin-gate').style.display  = 'block';
+  document.getElementById('admin-panel').style.display = 'none';
+  document.getElementById('admin-pw-input').value = '';
+  stopEnrollCamera();
+}
+
+function renderStudentList(students) {
+  const container = document.getElementById('student-list');
+  if (!students || Object.keys(students).length === 0) {
+    container.innerHTML = '<div style="color:#a0aec0;font-size:0.85rem;text-align:center;padding:20px">目前無授權學生</div>';
+    return;
+  }
+  let html = '';
+  for (const [uid, info] of Object.entries(students)) {
+    const hasFace  = info.has_face ? '✅ 已登記' : '❌ 未登記';
+    const faceHtml = info.has_face
+      ? `<img src="/static/faces/${uid}.jpg?t=${Date.now()}" class="student-avatar" alt="臉">`
+      : `<div class="student-avatar placeholder">👤</div>`;
+    html += `
+      <div class="student-row" id="row-${uid}">
+        ${faceHtml}
+        <div class="student-info">
+          <div class="s-name">${info.name}</div>
+          <div class="s-meta">學號：${info.student_id} ／ UID：${uid} ／ 人臉：${hasFace}</div>
+        </div>
+        <div class="student-actions">
+          <button class="btn btn-ghost btn-sm" onclick="editStudent('${uid}', '${info.name}', '${info.student_id}')">✏️ 編輯</button>
+          <button class="btn btn-ghost btn-sm" onclick="enrollFaceFor('${uid}', '${info.name}')">📷 登記臉</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteStudent('${uid}', '${info.name}')">🗑</button>
+        </div>
+      </div>`;
+  }
+  container.innerHTML = html;
+}
+
+async function deleteStudent(uid, name) {
+  if (!confirm(`確定要刪除 ${name}（${uid}）嗎？`)) return;
+  try {
+    const res  = await fetch(`/api/admin/students/${uid}`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: adminPassword }),
+    });
+    const data = await res.json();
+    if (res.status === 200) {
+      document.getElementById('row-' + uid)?.remove();
+    } else {
+      alert(data.error || '刪除失敗');
+    }
+  } catch (e) {
+    alert('網路錯誤：' + e.message);
+  }
+}
+
+async function addStudent() {
+  const uid  = document.getElementById('new-uid').value.trim().toUpperCase();
+  const name = document.getElementById('new-name').value.trim();
+  const sid  = document.getElementById('new-sid').value.trim();
+  const resultEl = document.getElementById('add-result');
+
+  if (!uid || !name || !sid) {
+    resultEl.style.color = '#e53e3e';
+    resultEl.textContent = '請填寫所有必填欄位';
+    return;
+  }
+
+  try {
+    const res  = await fetch('/api/admin/students', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: adminPassword, uid, name, student_id: sid }),
+    });
+    const data = await res.json();
+    if (res.status === 200) {
+      resultEl.style.color = '#276749';
+      resultEl.textContent = `✅ 已新增 ${name}`;
+      document.getElementById('new-uid').value  = '';
+      document.getElementById('new-name').value = '';
+      document.getElementById('new-sid').value  = '';
+
+      // 若有截圖則上傳人臉照片（preview 顯示中才算有拍照）
+      const preview = document.getElementById('enroll-preview');
+      if (preview.style.display !== 'none' && preview.src.startsWith('data:')) {
+        const canvas = document.getElementById('enroll-canvas');
+        await uploadFacePhoto(uid, canvas);
+      }
+      clearEnroll();
+
+      // 重新拉取學生清單
+      const listRes  = await fetch('/api/admin/students?password=' + encodeURIComponent(adminPassword));
+      const listData = await listRes.json();
+      renderStudentList(listData.students);
+    } else {
+      resultEl.style.color = '#e53e3e';
+      resultEl.textContent = '❌ ' + (data.error || '新增失敗');
+    }
+  } catch (e) {
+    resultEl.style.color = '#e53e3e';
+    resultEl.textContent = '❌ 網路錯誤';
+  }
+}
+
+/* ══════════════════════════════════════════════════
+   編輯學生資料（行內面板）
+══════════════════════════════════════════════════ */
+function editStudent(uid, name, sid) {
+  closeExEnroll();
+  closeEditPanel();
+
+  const row = document.getElementById('row-' + uid);
+  if (!row) return;
+
+  const panel = document.createElement('div');
+  panel.id = 'edit-panel';
+  panel.style.cssText = `
+    margin-top:10px; padding:14px 16px;
+    background:#fffbeb; border:1.5px solid #f6e05e;
+    border-radius:10px;
+  `;
+  panel.innerHTML = `
+    <div style="font-size:0.82rem;font-weight:700;color:#744210;margin-bottom:12px">
+      ✏️ 編輯學生資料
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+      <div>
+        <label style="font-size:0.78rem;font-weight:600;color:#4a5568;display:block;margin-bottom:4px">
+          卡片 UID（十六進位）
+        </label>
+        <input id="edit-uid" type="text" value="${uid}"
+          style="width:100%;padding:8px 10px;border:1.5px solid #e2e8f0;border-radius:8px;
+                 font-size:0.85rem;text-transform:uppercase;outline:none">
+      </div>
+      <div>
+        <label style="font-size:0.78rem;font-weight:600;color:#4a5568;display:block;margin-bottom:4px">
+          學號
+        </label>
+        <input id="edit-sid" type="text" value="${sid}"
+          style="width:100%;padding:8px 10px;border:1.5px solid #e2e8f0;border-radius:8px;
+                 font-size:0.85rem;outline:none">
+      </div>
+    </div>
+    <div style="margin-bottom:12px">
+      <label style="font-size:0.78rem;font-weight:600;color:#4a5568;display:block;margin-bottom:4px">
+        姓名
+      </label>
+      <input id="edit-name" type="text" value="${name}"
+        style="width:100%;padding:8px 10px;border:1.5px solid #e2e8f0;border-radius:8px;
+               font-size:0.85rem;outline:none">
+    </div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <button class="btn btn-primary btn-sm" onclick="saveEdit('${uid}')">💾 儲存</button>
+      <button class="btn btn-ghost btn-sm" onclick="closeEditPanel()">✕ 取消</button>
+      <span id="edit-msg" style="font-size:0.8rem"></span>
+    </div>
+  `;
+  row.after(panel);
+  // 防止面板內的點擊事件冒泡到 modal overlay
+  panel.addEventListener('click', e => e.stopPropagation());
+  // 捲動到編輯面板
+  setTimeout(() => panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 50);
+  document.getElementById('edit-uid').focus();
+}
+
+function closeEditPanel() {
+  document.getElementById('edit-panel')?.remove();
+}
+
+async function saveEdit(originalUid) {
+  const newUid = document.getElementById('edit-uid').value.trim().toUpperCase();
+  const name   = document.getElementById('edit-name').value.trim();
+  const sid    = document.getElementById('edit-sid').value.trim();
+  const msgEl  = document.getElementById('edit-msg');
+
+  if (!newUid || !name || !sid) {
+    msgEl.style.color = '#e53e3e';
+    msgEl.textContent = '請填寫所有欄位';
+    return;
+  }
+
+  msgEl.style.color = '#2b6cb0';
+  msgEl.textContent = '儲存中...';
+
+  try {
+    const res  = await fetch(`/api/admin/students/${originalUid}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        password:   adminPassword,
+        new_uid:    newUid,
+        name:       name,
+        student_id: sid,
+      }),
+    });
+    const data = await res.json();
+    if (res.status === 200) {
+      msgEl.style.color = '#276749';
+      msgEl.textContent = '✅ 已儲存';
+      setTimeout(async () => {
+        closeEditPanel();
+        const listRes  = await fetch('/api/admin/students?password=' + encodeURIComponent(adminPassword));
+        const listData = await listRes.json();
+        renderStudentList(listData.students);
+      }, 600);
+    } else {
+      msgEl.style.color = '#e53e3e';
+      msgEl.textContent = '❌ ' + (data.error || '儲存失敗');
+    }
+  } catch (e) {
+    msgEl.style.color = '#e53e3e';
+    msgEl.textContent = '❌ 網路錯誤：' + e.message;
+  }
+}
+
+/* ── 人臉登記（針對現有學生）── 獨立流程，不碰新增表單 ── */
+let enrollStream    = null;   // 新增表單用的相機
+let exEnrollStream  = null;   // 現有學生登記用的相機
+let exEnrollUid     = null;
+
+/* 在指定學生列下方展開相機區塊 */
+async function enrollFaceFor(uid, name) {
+  // 關閉上一個（若有）
+  closeExEnroll();
+
+  exEnrollUid = uid;
+  const row = document.getElementById('row-' + uid);
+  if (!row) return;
+
+  // 建立內嵌面板
+  const panel = document.createElement('div');
+  panel.id = 'ex-enroll-panel';
+  panel.style.cssText = `
+    margin-top:10px; padding:14px 16px;
+    background:#f7fafc; border:1px solid #e2e8f0;
+    border-radius:10px; display:flex; flex-direction:column; gap:10px;
+  `;
+  panel.innerHTML = `
+    <div style="font-size:0.82rem;font-weight:600;color:#553c9a">
+      📷 為 <strong>${name}</strong> 登記人臉
+    </div>
+    <div style="display:flex;align-items:flex-start;gap:12px;flex-wrap:wrap">
+      <div id="ex-cam-wrap" style="
+        width:200px;height:150px;background:#1a202c;border-radius:10px;overflow:hidden;
+      ">
+        <video id="ex-video" autoplay playsinline muted
+               style="width:100%;height:100%;object-fit:cover"></video>
+      </div>
+      <canvas id="ex-canvas" style="display:none"></canvas>
+      <img id="ex-preview" alt="預覽" style="
+        display:none;width:100px;height:75px;object-fit:cover;
+        border-radius:8px;border:1.5px solid #e2e8f0;
+      ">
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <button class="btn btn-success btn-sm" id="ex-btn-snap" onclick="snapExEnroll()">📸 拍照</button>
+        <button class="btn btn-primary btn-sm" id="ex-btn-save" onclick="saveExEnroll()" style="display:none">💾 儲存</button>
+        <button class="btn btn-ghost btn-sm" onclick="closeExEnroll()">✕ 取消</button>
+      </div>
+      <span id="ex-enroll-msg" style="font-size:0.8rem;align-self:center"></span>
+    </div>
+  `;
+  row.after(panel);
+  // 防止面板內的點擊事件冒泡到 modal overlay
+  panel.addEventListener('click', e => e.stopPropagation());
+  setTimeout(() => panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 50);
+
+  // 開啟相機（含 retry）
+  const msgEl = document.getElementById('ex-enroll-msg');
+  msgEl.style.color = '#2b6cb0';
+  msgEl.textContent = '相機啟動中...';
+  try {
+    exEnrollStream = await openCamera({ video: { facingMode: 'user' } });
+    document.getElementById('ex-video').srcObject = exEnrollStream;
+    msgEl.textContent = '';
+  } catch (e) {
+    msgEl.style.color = '#e53e3e';
+    msgEl.textContent = '❌ 無法開啟相機：' + e.message;
+  }
+}
+
+function snapExEnroll() {
+  const video   = document.getElementById('ex-video');
+  const canvas  = document.getElementById('ex-canvas');
+  const preview = document.getElementById('ex-preview');
+
+  canvas.width  = video.videoWidth;
+  canvas.height = video.videoHeight;
+  canvas.getContext('2d').drawImage(video, 0, 0);
+
+  preview.src = canvas.toDataURL('image/jpeg', 0.85);
+  preview.style.display = 'block';
+  document.getElementById('ex-cam-wrap').style.display = 'none';
+  document.getElementById('ex-btn-snap').style.display = 'none';
+  document.getElementById('ex-btn-save').style.display = '';
+
+  if (exEnrollStream) {
+    exEnrollStream.getTracks().forEach(t => t.stop());
+    exEnrollStream = null;
+  }
+}
+
+async function saveExEnroll() {
+  const canvas = document.getElementById('ex-canvas');
+  const msgEl  = document.getElementById('ex-enroll-msg');
+  if (!canvas || canvas.width === 0) return;
+
+  msgEl.style.color = '#2b6cb0';
+  msgEl.textContent = '上傳中...';
+
+  const imageBase64 = canvas.toDataURL('image/jpeg', 0.85).split(',')[1];
+  try {
+    const res  = await fetch(`/api/admin/students/${exEnrollUid}/face`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: adminPassword, image: imageBase64 }),
+    });
+    const data = await res.json();
+    if (res.status === 200) {
+      msgEl.style.color = '#276749';
+      msgEl.textContent = '✅ 儲存成功！';
+      // 重新整理學生清單
+      setTimeout(async () => {
+        closeExEnroll();
+        const listRes  = await fetch('/api/admin/students?password=' + encodeURIComponent(adminPassword));
+        const listData = await listRes.json();
+        renderStudentList(listData.students);
+      }, 800);
+    } else {
+      msgEl.style.color = '#e53e3e';
+      msgEl.textContent = '❌ ' + (data.error || '儲存失敗');
+    }
+  } catch (e) {
+    msgEl.style.color = '#e53e3e';
+    msgEl.textContent = '❌ 網路錯誤';
+  }
+}
+
+function closeExEnroll() {
+  if (exEnrollStream) {
+    exEnrollStream.getTracks().forEach(t => t.stop());
+    exEnrollStream = null;
+  }
+  document.getElementById('ex-enroll-panel')?.remove();
+  exEnrollUid = null;
+}
+
+/* ── 新增表單附屬相機（供「新增學生」時選填人臉）── */
+async function startEnrollCamera() {
+  const wrap  = document.getElementById('enroll-camera-wrap');
+  const video = document.getElementById('enroll-video');
+  const snap  = document.getElementById('btn-snap');
+
+  try {
+    enrollStream = await openCamera({ video: { facingMode: 'user' } });
+    video.srcObject = enrollStream;
+    wrap.style.display = 'block';
+    snap.style.display = '';
+  } catch (e) {
+    alert('無法開啟相機：' + e.message);
+  }
+}
+
+function stopEnrollCamera() {
+  if (enrollStream) {
+    enrollStream.getTracks().forEach(t => t.stop());
+    enrollStream = null;
+  }
+  document.getElementById('enroll-camera-wrap').style.display = 'none';
+  document.getElementById('btn-snap').style.display = 'none';
+}
+
+function snapEnroll() {
+  const video   = document.getElementById('enroll-video');
+  const canvas  = document.getElementById('enroll-canvas');
+  const preview = document.getElementById('enroll-preview');
+
+  canvas.width  = video.videoWidth;
+  canvas.height = video.videoHeight;
+  canvas.getContext('2d').drawImage(video, 0, 0);
+
+  preview.src = canvas.toDataURL('image/jpeg', 0.85);
+  preview.style.display = 'block';
+  document.getElementById('btn-clear-enroll').style.display = '';
+
+  stopEnrollCamera();
+}
+
+function clearEnroll() {
+  const canvas  = document.getElementById('enroll-canvas');
+  const preview = document.getElementById('enroll-preview');
+  canvas.width  = 0;
+  canvas.height = 0;
+  preview.src = '';
+  preview.style.display = 'none';
+  document.getElementById('btn-clear-enroll').style.display = 'none';
+}
+
+async function uploadFacePhoto(uid, canvas) {
+  const imageBase64 = canvas.toDataURL('image/jpeg', 0.85).split(',')[1];
+  try {
+    await fetch(`/api/admin/students/${uid}/face`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: adminPassword, image: imageBase64 }),
+    });
+  } catch (e) {
+    console.warn('人臉上傳失敗：', e);
+  }
+}
+
+/* 點擊遮罩關閉 Modal（僅臉部辨識 Modal；管理者 Modal 不關閉，避免誤觸） */
+document.getElementById('face-modal').addEventListener('click', function(e) {
+  if (e.target === this) closeFaceModal();
+});
+</script>
+
+</body>
+</html>

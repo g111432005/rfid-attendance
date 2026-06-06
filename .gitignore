@@ -1,0 +1,24 @@
+# 憑證（私鑰不可公開）
+cert.pem
+key.pem
+
+# 個人資料（學生資訊、出勤紀錄、人臉照片）
+students.json
+records.json
+static/faces/
+
+# face-api.js 模型（檔案太大，用 download_models.py 自行下載）
+static/models/
+
+# 日誌
+logs/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.env
+
+# 系統檔
+.DS_Store
+Thumbs.db
